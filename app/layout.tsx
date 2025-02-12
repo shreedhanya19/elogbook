@@ -7,6 +7,8 @@ import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import Link from "next/link";
 import "./globals.css";
+import logo from "../components/logo.png";
+import Image from "next/image";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -39,11 +41,14 @@ export default function RootLayout({
         >
           <main className="min-h-screen flex flex-col items-center">
             <div className="flex w-full flex-col gap-4 items-center">
-              <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
-                <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
+              <nav className="w-full flex justify-stretch border-b border-b-foreground/10 h-16">
+                <div className="w-full flex justify-between items-center p-3 px-5 text-sm">
                   <div className="flex gap-5 items-center font-semibold">
-                    <Link href={"/"}>Itaan Pharma</Link>
-                   </div>
+                    {/* image of Itaan logo */}
+                    <Link href={"/"}>
+                      <Image src={logo} alt="Itaan Pharma" width={90} />
+                    </Link>
+                  </div>
                   {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
                 </div>
               </nav>
@@ -52,7 +57,6 @@ export default function RootLayout({
               </div>
 
               <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-16">
-         
                 <ThemeSwitcher />
               </footer>
             </div>

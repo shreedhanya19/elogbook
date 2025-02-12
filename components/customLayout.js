@@ -39,15 +39,15 @@ export default function CustomLayout({
       {/* Right Section: 75% Width */}
       <div className="flex flex-col w-3/4 h-full gap-6">
         {/* Top Right Section: 25% Height */}
-        <div className="h-1/6 flex flex-col justify-start shadow-md p-6 border border-gray-200 rounded-lg">
-          <h5 className="text-xl font-bold leading-none text-gray-900 dark:text-white">
+        <div className="h-40 flex flex-col  shadow-md p-6 border border-gray-200 rounded-lg">
+          <h5 className="text-xl font-bold leading-none text-gray-900 dark:text-teal-900">
             Log Books
           </h5>
           {/* Buttons */}
           <div className="flex space-x-4 mt-4 z-50">
             {/* <button
               onClick={(e) => handleButtonClick(e, "/protected/production")}
-              className="w-1/4 h-32 bg-blue-300 text-lg text-blue-900 font-semibold px-4 py-2 rounded hover:bg-blue-400 hover:font-bold"
+              className="w-1/4 h-32 bg-teal-300 text-lg text-teal-900 font-semibold px-4 py-2 rounded hover:bg-teal-400 hover:font-bold"
             >
               Equipment LogBook
             </button> */}
@@ -55,7 +55,7 @@ export default function CustomLayout({
               <button
                 id="dropdownDefaultButton"
                 data-dropdown-toggle="dropdownEqp"
-                class="text-white h-16 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                className="text-amber-900 font-semibold h-16 bg-amber-200 hover:bg-amber-300 focus:ring-4 focus:outline-none focus:ring-amber-300 rounded-lg  px-12 py-2.5 text-center inline-flex items-center dark:bg-amber-600 dark:hover:bg-amber-200 dark:focus:ring-amber-800"
                 type="button"
                 onClick={(e) =>
                   !eqpDropdown ? setEqpDropdown(true) : setEqpDropdown(false)
@@ -63,7 +63,7 @@ export default function CustomLayout({
               >
                 Equipment LogBook
                 <svg
-                  class="w-2.5 h-2.5 ms-3"
+                  className="w-2.5 h-2.5 ms-3"
                   aria-hidden="true"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -71,9 +71,9 @@ export default function CustomLayout({
                 >
                   <path
                     stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
                     d="m1 1 4 4 4-4"
                   />
                 </svg>
@@ -81,16 +81,16 @@ export default function CustomLayout({
 
               <div
                 id="dropdownEqp"
-                class={`z-10 ${!eqpDropdown ? "hidden" : ""} bg-white divide-y divide-gray-100 rounded-lg shadow w-44 dark:bg-gray-700 `}
+                className={`z-10 ${!eqpDropdown ? "hidden" : ""} bg-white divide-y divide-gray-100 rounded-lg shadow w-44 dark:bg-gray-700 `}
               >
                 <ul
-                  class="py-2 text-gray-700 dark:text-gray-200"
+                  className="py-2 text-gray-700 dark:text-gray-200"
                   aria-labelledby="dropdownDefaultButton"
                 >
                   <li>
                     <a
                       href="/protected/production"
-                      class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                      className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-teal-900"
                     >
                       Production
                     </a>
@@ -98,7 +98,7 @@ export default function CustomLayout({
                   <li>
                     <a
                       href="#"
-                      class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                      className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-teal-900"
                     >
                       Quality Assurance
                     </a>
@@ -106,7 +106,7 @@ export default function CustomLayout({
                   <li>
                     <a
                       href="#"
-                      class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                      className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-teal-900"
                     >
                       Research & Development
                     </a>
@@ -114,7 +114,7 @@ export default function CustomLayout({
                   <li>
                     <a
                       href="#"
-                      class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                      className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-teal-900"
                     >
                       Microbiology
                     </a>
@@ -126,7 +126,7 @@ export default function CustomLayout({
               <button
                 id="dropdownDefaultButton"
                 data-dropdown-toggle="dropdownArea"
-                class="text-white h-16 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                className="text-green-900 h-16 font-semibold bg-green-200 hover:bg-green-300 focus:ring-4 focus:outline-none focus:ring-green-300  rounded-lg  px-12 py-2.5 text-center inline-flex items-center dark:bg-green-600 dark:hover:bg-green-200 dark:focus:ring-green-800"
                 type="button"
                 onClick={(e) =>
                   !areaDropdown ? setAreaDropdown(true) : setAreaDropdown(false)
@@ -134,7 +134,7 @@ export default function CustomLayout({
               >
                 Area Cleaning LogBook
                 <svg
-                  class="w-2.5 h-2.5 ms-3"
+                  className="w-2.5 h-2.5 ms-3"
                   aria-hidden="true"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -142,9 +142,9 @@ export default function CustomLayout({
                 >
                   <path
                     stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
                     d="m1 1 4 4 4-4"
                   />
                 </svg>
@@ -152,16 +152,16 @@ export default function CustomLayout({
 
               <div
                 id="dropdownArea"
-                class={`z-10 ${!areaDropdown ? "hidden" : ""} bg-white divide-y divide-gray-100 rounded-lg shadow w-44 dark:bg-gray-700`}
+                className={`z-10 ${!areaDropdown ? "hidden" : ""} bg-white divide-y divide-gray-100 rounded-lg shadow w-44 dark:bg-gray-700`}
               >
                 <ul
-                  class="py-2 text-sm text-gray-700 dark:text-gray-200"
+                  className="py-2 text-gray-700 dark:text-gray-200"
                   aria-labelledby="dropdownDefaultButton"
                 >
                   <li>
                     <a
                       href="/protected/area/production"
-                      class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                      className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-teal-900"
                     >
                       Production
                     </a>
@@ -169,7 +169,7 @@ export default function CustomLayout({
                   <li>
                     <a
                       href="#"
-                      class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                      className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-teal-900"
                     >
                       Quality Assurance
                     </a>
@@ -177,7 +177,7 @@ export default function CustomLayout({
                   <li>
                     <a
                       href="#"
-                      class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                      className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-teal-900"
                     >
                       Research & Development
                     </a>
@@ -185,7 +185,7 @@ export default function CustomLayout({
                   <li>
                     <a
                       href="#"
-                      class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                      className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-teal-900"
                     >
                       Microbiology
                     </a>
@@ -197,7 +197,7 @@ export default function CustomLayout({
               <button
                 id="dropdownDefaultButton"
                 data-dropdown-toggle="dropdownCal"
-                class="text-white h-16 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                className="text-purple-900 h-16 font-semibold bg-purple-200 hover:bg-purple-300 focus:ring-4 focus:outline-none focus:ring-purple-300  rounded-lg  px-12 py-2.5 text-center inline-flex items-center dark:bg-purple-600 dark:hover:bg-purple-200 dark:focus:ring-purple-800"
                 type="button"
                 onClick={(e) =>
                   !calDropdown ? setCalDropdown(true) : setCalDropdown(false)
@@ -205,7 +205,7 @@ export default function CustomLayout({
               >
                 Calibration LogBook
                 <svg
-                  class="w-2.5 h-2.5 ms-3"
+                  className="w-2.5 h-2.5 ms-3"
                   aria-hidden="true"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -213,9 +213,9 @@ export default function CustomLayout({
                 >
                   <path
                     stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
                     d="m1 1 4 4 4-4"
                   />
                 </svg>
@@ -223,16 +223,16 @@ export default function CustomLayout({
 
               <div
                 id="dropdownCal"
-                class={`z-10 ${!calDropdown ? "hidden" : ""} bg-white divide-y divide-gray-100 rounded-lg shadow w-44 dark:bg-gray-700`}
+                className={`z-10 ${!calDropdown ? "hidden" : ""} bg-white divide-y divide-gray-100 rounded-lg shadow w-44 dark:bg-gray-700`}
               >
                 <ul
-                  class="py-2 text-sm text-gray-700 dark:text-gray-200"
+                  className="py-2 text-gray-700 dark:text-gray-200"
                   aria-labelledby="dropdownDefaultButton"
                 >
                   <li>
                     <a
-                      href="#"
-                      class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                      href="/protected/calibration/production"
+                      className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-teal-900"
                     >
                       Production
                     </a>
@@ -240,7 +240,7 @@ export default function CustomLayout({
                   <li>
                     <a
                       href="#"
-                      class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                      className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-teal-900"
                     >
                       Quality Assurance
                     </a>
@@ -248,7 +248,7 @@ export default function CustomLayout({
                   <li>
                     <a
                       href="#"
-                      class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                      className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-teal-900"
                     >
                       Research & Development
                     </a>
@@ -256,7 +256,7 @@ export default function CustomLayout({
                   <li>
                     <a
                       href="#"
-                      class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                      className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-teal-900"
                     >
                       Microbiology
                     </a>
@@ -265,9 +265,6 @@ export default function CustomLayout({
               </div>
             </div>
           </div>
-
-          {/* Optional Content */}
-          <div className="mt-4">{topRightContent}</div>
         </div>
 
         {/* Bottom Right Section: Remaining Height */}

@@ -83,8 +83,6 @@ export default function QRScanner() {
 
   return (
     <div>
-      <h2>QR Code Scanner</h2>
-
       {isScanning ? (
         <div>
           <video
@@ -113,24 +111,25 @@ export default function QRScanner() {
           </button>
         </div>
       ) : (
-        <button
-          onClick={startScanner}
-          style={{
-            padding: "10px",
-            backgroundColor: "green",
-            color: "white",
-            border: "none",
-            cursor: "pointer",
-          }}
-        >
-          Start Scanning
-        </button>
+        <div>
+          <button
+            onClick={startScanner}
+            className=" bg-teal-200 p-6 rounded-lg w-full text-md font-semibold text-teal-900 flex items-center justify-center"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="#134e4a"
+              className="mr-4 "
+            >
+              <path d="M80-680v-200h200v80H160v120H80Zm0 600v-200h80v120h120v80H80Zm600 0v-80h120v-120h80v200H680Zm120-600v-120H680v-80h200v200h-80ZM700-260h60v60h-60v-60Zm0-120h60v60h-60v-60Zm-60 60h60v60h-60v-60Zm-60 60h60v60h-60v-60Zm-60-60h60v60h-60v-60Zm120-120h60v60h-60v-60Zm-60 60h60v60h-60v-60Zm-60-60h60v60h-60v-60Zm240-320v240H520v-240h240ZM440-440v240H200v-240h240Zm0-320v240H200v-240h240Zm-60 500v-120H260v120h120Zm0-320v-120H260v120h120Zm320 0v-120H580v120h120Z" />
+            </svg>
+            <span className="  ">Scan QR Code</span>
+          </button>
+        </div>
       )}
-
-      <div>
-        <h3>Scanned QR Code:</h3>
-        <p>{qrResult || "No QR code scanned yet"}</p>
-      </div>
     </div>
   );
 }

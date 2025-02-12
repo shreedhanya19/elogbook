@@ -90,7 +90,12 @@ const ClientListComponent = ({ lists, user, id }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(
-    !id ? localStorage.getItem("selectedEqp") : parseInt(id)
+    localStorage.getItem("selectedEqp") != null ||
+      localStorage.getItem("selectedEqp") != NaN
+      ? parseInt(localStorage.getItem("selectedEqp"))
+      : id
+        ? parseInt(id)
+        : 0
   );
   const [open, setOpen] = useState(false);
   const [users, setUsers] = useState(null);
@@ -108,6 +113,14 @@ const ClientListComponent = ({ lists, user, id }) => {
   const [cycle, setCycle] = useState(true);
   const [holdOpen, setHoldOpen] = useState(false);
   const [expiry, setExpiry] = useState(true);
+  const [auditTrailOpen, setAuditTrailOpen] = useState(false);
+  const menuRef = useRef(null);
+  const [freeToSelect, setFreeToSelect] = useState(false);
+  const [dayCompleted, setDayCompleted] = useState(false);
+  const [activityName, setActivityName] = useState(null);
+  const [otherActivityName, setOtherActivityName] = useState(null);
+  const [productName, setProductName] = useState(null);
+  const [batchNo, setBatchNo] = useState(null);
 
   const router = useRouter();
   const getCurrentTime = () => {
@@ -171,6 +184,7 @@ const ClientListComponent = ({ lists, user, id }) => {
     performed_by: "",
     approval_status: "Pending",
     linked_eqp: "",
+    other_activity_name: "",
   });
 
   const handleInputChange = (e) => {
@@ -243,10 +257,18 @@ const ClientListComponent = ({ lists, user, id }) => {
       }
     };
     fetchActivities();
+  }, []);
 
-    if (ifId) {
-      setOpen(true);
-    }
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setAuditTrailOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   useEffect(() => {
@@ -256,6 +278,7 @@ const ClientListComponent = ({ lists, user, id }) => {
           .from("production_activities")
           .select("*")
           .eq("linked_eqp", lists[selected].tag_id)
+          .limit(1)
           .order("start_time", { ascending: false });
         if (error) {
           throw error;
@@ -290,6 +313,92 @@ const ClientListComponent = ({ lists, user, id }) => {
     localStorage.setItem("selectedEqp", selected);
   }, [selected]);
 
+  useEffect(() => {
+    if (allActivities) {
+      const latestActivity = allActivities[0];
+      if (!latestActivity) {
+        setCurrentActivity(null);
+        setNextAllowedActivity(lists[selected].activity_order[0]);
+        return; // If no activity, default to the first
+      }
+      let currentIndex = lists[selected].activity_order.findIndex(
+        (activityq) => activityq.name === latestActivity.activity_name
+      );
+      //console.log(currentIndex);
+
+      if (currentIndex === -1) {
+        console.error("Activity not found in the equipment order!");
+        setCurrentActivity(null);
+        setNextAllowedActivity(null);
+
+        return;
+      }
+      setCurrentActivity(latestActivity);
+
+      if (latestActivity.activity_status === "In Progress") {
+        setInProgress(latestActivity.activity_name);
+      }
+
+      const nextIndex = currentIndex + 1;
+      if (nextIndex <= lists[selected].activity_order.length - 1) {
+        setNextAllowedActivity(lists[selected].activity_order[nextIndex]);
+        setActivityName(lists[selected].activity_order[nextIndex].name);
+        setFreeToSelect(false);
+      } else {
+        setFreeToSelect(true);
+      }
+
+      if (latestActivity.approval_status === "Pending") {
+        setIsApproved(false);
+      } else {
+        setIsApproved(true);
+      }
+
+      if (ifId) {
+        setOpen(true);
+      }
+    }
+
+    const fetchLastDayActivity = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("production_activities")
+          .select("*")
+          .eq("activity_name", "Bowie Dick")
+          .order("id", { ascending: false })
+          .limit(1);
+
+        if (error) {
+          throw error;
+        }
+
+        const latestRecord = data[0];
+
+        const endTime = new Date(latestRecord.end_time); // Convert to Date object
+        const now = new Date(); // Get current timestamp
+        const differenceInHours = (now - endTime) / (1000 * 60 * 60); // Convert ms to hours
+        const isExpired = differenceInHours >= 24; // Check if 24+ hours passed
+        console.log(differenceInHours);
+        if (
+          isExpired &&
+          currentActivity &&
+          currentActivity.cycle_count <= data[0].cycle_count
+        ) {
+          setFreeToSelect(false);
+          setCurrentActivity((prevState) => ({
+            ...prevState, // Spread the previous state to retain other values
+            activity_name: lists[selected].activity_order[0], // Update only the city key
+          }));
+          setNextAllowedActivity(lists[selected].activity_order[0]);
+        }
+      } catch (error) {
+        console.error("Error fetching activities:", error);
+        return null;
+      }
+    };
+    fetchLastDayActivity();
+  }, [allActivities]);
+
   if (loading) {
     return <p>Loading...</p>;
   }
@@ -304,127 +413,61 @@ const ClientListComponent = ({ lists, user, id }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (currentActivity.hold_expiry != null) {
+    if (
+      nextAllowedActivity &&
+      nextAllowedActivity.name === lists[selected].activity_order[0].name
+    ) {
       try {
-        if (isBeforeExpiry(currentActivity.hold_expiry)) {
-          if (expiry === true) {
-            console.log("Valid Before expiry");
-            const { data, error } = await supabase
-              .from("production_activities") // Replace with your table name
-              .insert({
-                created_by: users.email,
-                activity_name: nextAllowedActivity.name,
-                activity_status: "In Progress",
-                start_time: getCurrentTime(),
-                product_name: formData.product_name,
-                batch_no: formData.batch_no,
-                performed_by: users.email,
-                approval_status: "Pending",
-                linked_eqp: lists[selected].tag_id,
-                hold_expiry: currentActivity.hold_expiry,
-                cycle: cycle,
-              })
-              .select();
-            const activityId = data[0]?.id; // Assuming Supabase returns the id in the inserted record
-            if (activityId) {
-              // try {
-              //   const { session, error2 } = await supabase
-              //     .from("activity_sessions")
-              //     .insert({
-              //       activity_id: activityId,
-              //       session_type: "Active",
-              //       start_time: getCurrentTime(),
-              //       performed_by: users.email,
-              //     })
-              //     .select();
-              //   if (error2) {
-              //     throw error2;
-              //   }
-              // } catch (err) {
-              //   console.error(err.message);
-              // }
-              router.push(`./production/activity/${activityId}`); // Use router.push for redirection
-            }
-          } else {
-            console.log("Valid Before expiry");
-            const { data, error } = await supabase
-              .from("production_activities") // Replace with your table name
-              .insert({
-                created_by: users.email,
-                activity_name: nextAllowedActivity.name,
-                activity_status: "In Progress",
-                start_time: getCurrentTime(),
-                product_name: formData.product_name,
-                batch_no: formData.batch_no,
-                performed_by: users.email,
-                approval_status: "Pending",
-                linked_eqp: lists[selected].tag_id,
-                cycle: cycle,
-              })
-              .select();
-            const activityId = data[0]?.id; // Assuming Supabase returns the id in the inserted record
-            if (activityId) {
-              // try {
-              //   const { session, error2 } = await supabase
-              //     .from("activity_sessions")
-              //     .insert({
-              //       activity_id: activityId,
-              //       session_type: "Active",
-              //       start_time: getCurrentTime(),
-              //       performed_by: users.email,
-              //     })
-              //     .select();
-              //   if (error2) {
-              //     throw error2;
-              //   }
-              // } catch (err) {
-              //   console.error(err.message);
-              // }
-              router.push(`./production/activity/${activityId}`); // Use router.push for redirection
-            }
-          }
-        } else {
-          console.log("Invalid Hold Expired");
-          const { data, error } = await supabase
-            .from("production_activities") // Replace with your table name
-            .insert({
-              created_by: users.email,
-              activity_name: nextAllowedActivity.name,
-              activity_status: "Not Started (Hold Expired)",
-              start_time: getCurrentTime(),
-              product_name: formData.product_name,
-              batch_no: formData.batch_no,
-              performed_by: users.email,
-              approval_status: "Approved",
-              approved_by: "System",
-              approved_at: getCurrentTime(),
-              linked_eqp: lists[selected].tag_id,
-              cycle: false,
-            })
-            .select();
-
-          const activityId = data[0]?.id; // Assuming Supabase returns the id in the inserted record
-          if (activityId) {
-            // try {
-            //   const { session, error2 } = await supabase
-            //     .from("activity_sessions")
-            //     .insert({
-            //       activity_id: activityId,
-            //       session_type: "Active",
-            //       start_time: getCurrentTime(),
-            //       performed_by: users.email,
-            //     })
-            //     .select();
-            //   if (error2) {
-            //     throw error2;
-            //   }
-            // } catch (err) {
-            //   console.error(err.message);
-            // }
-            setOpen(false);
-            setHoldOpen(true);
-          }
+        const { data, error } = await supabase
+          .from("production_activities") // Replace with your table name
+          .insert({
+            created_by: users.email,
+            activity_name: nextAllowedActivity.name,
+            activity_status: "In Progress",
+            start_time: getCurrentTime(),
+            product_name: productName,
+            batch_no: batchNo,
+            performed_by: users.email,
+            approval_status: "Pending",
+            linked_eqp: lists[selected].tag_id,
+            // hold_expiry: getFutureTimestamp(
+            //   lists[selected].activity_order[
+            //     lists[selected].activity_order.findIndex(
+            //       (activityq) => activityq.name === nextAllowedActivity.name
+            //     )
+            //   ].hold
+            // ),
+            hold_time: parseInt(
+              lists[selected].activity_order[
+                lists[selected].activity_order.findIndex(
+                  (activityq) => activityq.name === nextAllowedActivity.name
+                )
+              ].hold
+            ),
+            cycle_count: parseInt(currentActivity.cycle_count) + 1,
+          })
+          .select();
+        const activityId = data[0]?.id; // Assuming Supabase returns the id in the inserted record
+        if (activityId) {
+          // try {
+          //   const { session, error2 } = await supabase
+          //     .from("activity_sessions")
+          //     .insert({
+          //       activity_id: activityId,
+          //       session_type: "Active",
+          //       start_time: getCurrentTime(),
+          //       performed_by: users.email,
+          //     })
+          //     .select();
+          //   if (error2) {
+          //     throw error2;
+          //   }
+          // } catch (err) {
+          //   console.error(err.message);
+          // }
+          router.push(`./production/activity/${activityId}`); // Use router.push for redirection
         }
+
         if (error) {
           throw error;
         }
@@ -432,26 +475,37 @@ const ClientListComponent = ({ lists, user, id }) => {
         console.error(err.message);
       } finally {
       }
-    } else if (holdExpiry != 0) {
-      if (expiry === true) {
-        console.log("Valid no expiry with new expiry");
+    } else if (freeToSelect) {
+      try {
         const { data, error } = await supabase
           .from("production_activities") // Replace with your table name
           .insert({
             created_by: users.email,
-            activity_name: nextAllowedActivity.name,
+            activity_name: activityName,
             activity_status: "In Progress",
             start_time: getCurrentTime(),
-            product_name: formData.product_name,
-            batch_no: formData.batch_no,
+            product_name: productName,
+            batch_no: batchNo,
             performed_by: users.email,
             approval_status: "Pending",
             linked_eqp: lists[selected].tag_id,
-            hold_expiry: getFutureTimestamp(holdExpiry),
-            cycle: cycle,
+            // hold_expiry: getFutureTimestamp(
+            //   lists[selected].activity_order[
+            //     lists[selected].activity_order.findIndex(
+            //       (activityq) => activityq.name === nextAllowedActivity.name
+            //     )
+            //   ].hold
+            // ),
+            // hold_time: parseInt(
+            //   lists[selected].activity_order[
+            //     lists[selected].activity_order.findIndex(
+            //       (activityq) => activityq.name === nextAllowedActivity.name
+            //     )
+            //   ].hold
+            // ),
+            cycle_count: parseInt(currentActivity.cycle_count),
           })
           .select();
-
         const activityId = data[0]?.id; // Assuming Supabase returns the id in the inserted record
         if (activityId) {
           // try {
@@ -472,48 +526,16 @@ const ClientListComponent = ({ lists, user, id }) => {
           // }
           router.push(`./production/activity/${activityId}`); // Use router.push for redirection
         }
-      } else {
-        console.log("Valid no expiry with new expiry");
-        const { data, error } = await supabase
-          .from("production_activities") // Replace with your table name
-          .insert({
-            created_by: users.email,
-            activity_name: nextAllowedActivity.name,
-            activity_status: "In Progress",
-            start_time: getCurrentTime(),
-            product_name: formData.product_name,
-            batch_no: formData.batch_no,
-            performed_by: users.email,
-            approval_status: "Pending",
-            linked_eqp: lists[selected].tag_id,
-            cycle: cycle,
-          })
-          .select();
 
-        const activityId = data[0]?.id; // Assuming Supabase returns the id in the inserted record
-        if (activityId) {
-          // try {
-          //   const { session, error2 } = await supabase
-          //     .from("activity_sessions")
-          //     .insert({
-          //       activity_id: activityId,
-          //       session_type: "Active",
-          //       start_time: getCurrentTime(),
-          //       performed_by: users.email,
-          //     })
-          //     .select();
-          //   if (error2) {
-          //     throw error2;
-          //   }
-          // } catch (err) {
-          //   console.error(err.message);
-          // }
-          router.push(`./production/activity/${activityId}`); // Use router.push for redirection
+        if (error) {
+          throw error;
         }
+      } catch (err) {
+        console.error(err.message);
+      } finally {
       }
     } else {
-      console.log("Valid no expiry and no new expiry");
-      if (expiry === true) {
+      try {
         const { data, error } = await supabase
           .from("production_activities") // Replace with your table name
           .insert({
@@ -521,12 +543,26 @@ const ClientListComponent = ({ lists, user, id }) => {
             activity_name: nextAllowedActivity.name,
             activity_status: "In Progress",
             start_time: getCurrentTime(),
-            product_name: formData.product_name,
-            batch_no: formData.batch_no,
+            product_name: productName,
+            batch_no: batchNo,
             performed_by: users.email,
             approval_status: "Pending",
             linked_eqp: lists[selected].tag_id,
-            cycle: cycle,
+            // hold_expiry: getFutureTimestamp(
+            //   lists[selected].activity_order[
+            //     lists[selected].activity_order.findIndex(
+            //       (activityq) => activityq.name === nextAllowedActivity.name
+            //     )
+            //   ].hold
+            // ),
+            hold_time: parseInt(
+              lists[selected].activity_order[
+                lists[selected].activity_order.findIndex(
+                  (activityq) => activityq.name === nextAllowedActivity.name
+                )
+              ].hold
+            ),
+            cycle_count: parseInt(currentActivity.cycle_count),
           })
           .select();
         const activityId = data[0]?.id; // Assuming Supabase returns the id in the inserted record
@@ -549,42 +585,13 @@ const ClientListComponent = ({ lists, user, id }) => {
           // }
           router.push(`./production/activity/${activityId}`); // Use router.push for redirection
         }
-      } else {
-        const { data, error } = await supabase
-          .from("production_activities") // Replace with your table name
-          .insert({
-            created_by: users.email,
-            activity_name: nextAllowedActivity.name,
-            activity_status: "In Progress",
-            start_time: getCurrentTime(),
-            product_name: formData.product_name,
-            batch_no: formData.batch_no,
-            performed_by: users.email,
-            approval_status: "Pending",
-            linked_eqp: lists[selected].tag_id,
-            cycle: cycle,
-          })
-          .select();
-        const activityId = data[0]?.id; // Assuming Supabase returns the id in the inserted record
-        if (activityId) {
-          // try {
-          //   const { session, error2 } = await supabase
-          //     .from("activity_sessions")
-          //     .insert({
-          //       activity_id: activityId,
-          //       session_type: "Active",
-          //       start_time: getCurrentTime(),
-          //       performed_by: users.email,
-          //     })
-          //     .select();
-          //   if (error2) {
-          //     throw error2;
-          //   }
-          // } catch (err) {
-          //   console.error(err.message);
-          // }
-          router.push(`./production/activity/${activityId}`); // Use router.push for redirection
+
+        if (error) {
+          throw error;
         }
+      } catch (err) {
+        console.error(err.message);
+      } finally {
       }
     }
   };
@@ -686,6 +693,9 @@ const ClientListComponent = ({ lists, user, id }) => {
 
   return (
     <div className="overflow-auto">
+      <h1 className=" font-bold text-amber-900 text-2xl ml-4 mb-4">
+        Equipment Log Books
+      </h1>
       {/* Left Section: 25% Width */}
       <div className="flex w-full h-screen ">
         <div className="w-1/4 h-full p-3">
@@ -703,10 +713,10 @@ const ClientListComponent = ({ lists, user, id }) => {
                 {lists.map((list, index) => (
                   <li
                     key={index}
-                    className="py-3 sm:py-4 cursor-pointer"
+                    className="py-3 sm:py-4 cursor-pointer "
                     onClick={() => handleClick(index)}
                   >
-                    <div className="flex items-center">
+                    <div className="flex items-center border-b-black">
                       <div className="flex-shrink-0">
                         <Shapes
                           color={selected === index ? "black" : "#A9A9A9"}
@@ -742,6 +752,45 @@ const ClientListComponent = ({ lists, user, id }) => {
         {/* Right Section: 75% Width */}
         <div className="flex flex-col w-3/4 h-full overflow-auto">
           <div className="flex-1 m-3 p-3 bg-white border border-gray-200 rounded-lg shadow sm:p-8 dark:bg-zinc-900 dark:border-zinc-700">
+            <div className="relative justify-end mb-4">
+              <button
+                id="dropdownMenuIconButton"
+                data-dropdown-toggle="dropdownDots"
+                className="absolute right-0 items-center p-2 text-sm font-medium text-center text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none dark:text-white focus:ring-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
+                type="button"
+                onClick={() => setAuditTrailOpen(true)}
+              >
+                <svg
+                  className="w-5 h-5"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="currentColor"
+                  viewBox="0 0 4 15"
+                >
+                  <path d="M3.5 1.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 6.041a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.959a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" />
+                </svg>
+              </button>
+
+              <div
+                ref={menuRef}
+                id="dropdownDots"
+                className={`border ${auditTrailOpen ? "" : "hidden"} border-gray-200 shadow-md z-10 absolute right-0 top-10 bg-white divide-y divide-gray-100 rounded-lg w-44 dark:bg-gray-700 dark:divide-gray-600`}
+              >
+                <ul
+                  className="py-2 text-gray-700 dark:text-gray-200"
+                  aria-labelledby="dropdownMenuIconButton"
+                >
+                  <li>
+                    <a
+                      href={`./production/equipment/${lists[selected].eqpid}`}
+                      className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                    >
+                      View Audit Trail
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </div>
             <h5 className="text-xl font-bold leading-none text-gray-900 dark:text-white">
               Equipment Details
             </h5>
@@ -772,76 +821,18 @@ const ClientListComponent = ({ lists, user, id }) => {
                 <button
                   type="button"
                   onClick={() => {
-                    setOpen(true);
-                    const latestActivity = allActivities[0];
-                    if (!latestActivity) {
-                      setCurrentActivity(null);
-                      setNextAllowedActivity(lists[selected].activity_order[0]);
-                      return; // If no activity, default to the first
-                    }
-                    let currentIndex = lists[selected].activity_order.findIndex(
-                      (activityq) =>
-                        activityq.name === latestActivity.activity_name
-                    );
-                    console.log(currentIndex);
-
-                    if (currentIndex === -1) {
-                      console.error(
-                        "Activity not found in the equipment order!"
-                      );
-                      setCurrentActivity(null);
-                      setNextAllowedActivity(null);
-
-                      return;
-                    }
-                    setCurrentActivity(latestActivity);
-                    setCycle(latestActivity.cycle);
-
-                    if (latestActivity.activity_status === "In Progress") {
-                      setInProgress(latestActivity.activity_name);
-                    }
                     if (
-                      latestActivity.cycle === false &&
-                      latestActivity.activity_name ===
-                        lists[selected].activity_order[
-                          lists[selected].activity_order.length - 1
-                        ].name
+                      currentActivity &&
+                      currentActivity.hold_expiry &&
+                      getTimeRemaining(currentActivity.hold_expiry) ===
+                        "Time has already passed"
                     ) {
+                      setHoldOpen(true);
                       setNextAllowedActivity(lists[selected].activity_order[0]);
-                      setHoldExpiry(
-                        parseInt(lists[selected].activity_order[0].hold)
-                      );
-                      console.log(nextAllowedActivity);
-                      setCycle(true);
-                    } else {
-                      const nextIndex =
-                        (currentIndex + 1) %
-                        lists[selected].activity_order.length;
-                      setNextAllowedActivity(
-                        lists[selected].activity_order[nextIndex]
-                      );
-                      if (
-                        nextIndex ===
-                        lists[selected].activity_order.length - 1
-                      ) {
-                        setCycle(false);
-                        setExpiry(false);
-                      } else {
-                        setCycle(true);
-                      }
-                      setHoldExpiry(
-                        parseInt(lists[selected].activity_order[nextIndex].hold)
-                      );
-                      console.log(nextAllowedActivity);
-                    }
-                    if (latestActivity.approval_status === "Pending") {
-                      setIsApproved(false);
-                    } else {
-                      setIsApproved(true);
-                    }
-                    setOpen(true);
+                      setCurrentActivity(null);
+                    } else setOpen(true);
                   }}
-                  className="text-white w-full h-full bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
+                  className="text-blue-900 font-semibold w-full h-full bg-blue-200 hover:bg-blue-300 focus:ring-4 focus:ring-blue-600 rounded-lg px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
                 >
                   Start Activity
                 </button>
@@ -849,28 +840,53 @@ const ClientListComponent = ({ lists, user, id }) => {
               <div className="p-2 flex justify-center align-middle">
                 <button
                   type="button"
-                  className="focus:outline-none w-full h-full text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900"
+                  className="focus:outline-none font-semibold w-full h-full text-red-900 bg-red-200 hover:bg-red-300 focus:ring-4 focus:ring-red-600 rounded-lg px-5 py-2.5 me-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900"
                 >
                   Report Issue
-                </button>
-              </div>
-
-              <div className="p-2 flex justify-center align-middle ">
-                <button
-                  type="button"
-                  onClick={() =>
-                    router.push(
-                      `./production/equipment/${lists[selected].eqpid}`
-                    )
-                  }
-                  className="text-white w-full h-full bg-purple-700 hover:bg-purple-800 focus:ring-4 focus:ring-purple-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
-                >
-                  View Audit Trail
                 </button>
               </div>
             </div>
 
             <div className="relative overflow-x-auto">
+              <div>
+                {currentActivity &&
+                currentActivity.hold_expiry &&
+                getTimeRemaining(currentActivity.hold_expiry) !=
+                  "Time has already passed" &&
+                nextAllowedActivity.name ? (
+                  <div className="mt-6 mb-8">
+                    <div
+                      className="p-4 mb-4 text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300 border-2 border-yellow-100"
+                      role="alert"
+                    >
+                      <span className="font-bold">Alert!</span> Start Next
+                      Activity - <strong>{nextAllowedActivity.name}</strong> in
+                      :{" "}
+                      <span className="font-bold text-red-800">
+                        {getTimeRemaining(currentActivity.hold_expiry)}
+                      </span>
+                    </div>
+                  </div>
+                ) : currentActivity &&
+                  currentActivity.hold_expiry &&
+                  getTimeRemaining(currentActivity.hold_expiry) ===
+                    "Time has already passed" &&
+                  nextAllowedActivity.name ? (
+                  <div className="mt-6 mb-8">
+                    <div
+                      className="p-4 mb-4 text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-300"
+                      role="alert"
+                    >
+                      <span className="font-bold">
+                        Alert!
+                        <br />
+                      </span>{" "}
+                      Hold time of previous activity has expired. Please restart
+                      activities from the beginning
+                    </div>
+                  </div>
+                ) : null}
+              </div>
               <h4 className="text-xl font-bold leading-none text-gray-900 dark:text-white mt-6 mb-6">
                 In Progress Activities
               </h4>
@@ -1022,7 +1038,10 @@ const ClientListComponent = ({ lists, user, id }) => {
                         as="h3"
                         className="text-base font-semibold text-gray-900 w-full dark:text-white"
                       >
-                        {currentActivity.activity_name} Activity Not Approved
+                        {currentActivity
+                          ? currentActivity.activity_name
+                          : "..."}{" "}
+                        Activity Not Approved
                       </DialogTitle>
                       <div className="mt-6 w-full pb-6">
                         <p>
@@ -1060,7 +1079,9 @@ const ClientListComponent = ({ lists, user, id }) => {
                                   type="text"
                                   name="product_name"
                                   id="name"
-                                  onChange={handleInputChange}
+                                  onChange={(e) =>
+                                    setProductName(e.target.value)
+                                  }
                                   className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                                   placeholder="Type product name"
                                   required
@@ -1074,7 +1095,7 @@ const ClientListComponent = ({ lists, user, id }) => {
                                   type="text"
                                   name="batch_no"
                                   id="brand"
-                                  onChange={handleInputChange}
+                                  onChange={(e) => setBatchNo(e.target.value)}
                                   className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                                   placeholder="Type batch number"
                                   required
@@ -1084,20 +1105,58 @@ const ClientListComponent = ({ lists, user, id }) => {
                                 <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                                   Activity Name
                                 </label>
-                                <input
-                                  type="text"
-                                  name="performed_by"
-                                  id="performedBy"
-                                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg  block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white "
-                                  value={
-                                    !nextAllowedActivity
-                                      ? "..."
-                                      : nextAllowedActivity.name
-                                  }
-                                  required=""
-                                  readOnly
-                                />
+                                {freeToSelect ? (
+                                  <select
+                                    id="countries"
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                    name="activity_name"
+                                    onChange={(e) =>
+                                      setActivityName(e.target.value)
+                                    }
+                                  >
+                                    <option value="Select a Value">
+                                      Select a value
+                                    </option>
+                                    <option value="Garment Load">
+                                      Garment Load
+                                    </option>
+                                    <option value="Disinfectant Load">
+                                      Disinfectant Load
+                                    </option>
+                                    <option value="Others">Others</option>
+                                  </select>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    name="activity_name"
+                                    id="performedBy"
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg  block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white "
+                                    value={
+                                      nextAllowedActivity
+                                        ? nextAllowedActivity.name
+                                        : ""
+                                    }
+                                    required=""
+                                    readOnly
+                                  />
+                                )}
                               </div>
+                              {activityName && activityName === "Others" ? (
+                                <div>
+                                  <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                                    Other Activity Name
+                                  </label>
+                                  <input
+                                    type="text"
+                                    name="other_activity_name"
+                                    id="name"
+                                    onChange={handleInputChange}
+                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                                    placeholder="Type other activity name"
+                                    required
+                                  />
+                                </div>
+                              ) : null}
                               <div>
                                 <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                                   Performed By
@@ -1127,91 +1186,76 @@ const ClientListComponent = ({ lists, user, id }) => {
                                 />
                               </div>
                             </div>
-                            <div className="px-12">
-                              <p className="pb-8 text-sm font-medium text-gray-900 dark:text-white">
-                                Activity Order for {lists[selected].eqp_name}
-                              </p>
-                              <ol className="relative text-gray-500 border-s border-gray-300 dark:border-gray-700 dark:text-gray-400">
-                                {lists[selected].activity_order.map(
-                                  (activity, index) => (
-                                    <li key={index} className="mb-10 ms-6">
-                                      {currentActivity &&
-                                      index <=
-                                        lists[
-                                          selected
-                                        ].activity_order.findIndex(
-                                          (activityq) =>
-                                            activityq.name ===
-                                            currentActivity.activity_name
-                                        ) &&
-                                      nextAllowedActivity.name !=
-                                        lists[selected].activity_order[0]
-                                          .name ? (
-                                        <span className="absolute flex items-center justify-center w-8 h-8 bg-green-200 rounded-full -start-4 ring-4 ring-white dark:ring-gray-900 dark:bg-green-900">
-                                          <svg
-                                            className="w-3.5 h-3.5 text-green-500 dark:text-green-400"
-                                            aria-hidden="true"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            fill="none"
-                                            viewBox="0 0 16 12"
-                                          >
-                                            <path
-                                              stroke="currentColor"
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                              strokeWidth="2"
-                                              d="M1 5.917 5.724 10.5 15 1.5"
-                                            />
-                                          </svg>
-                                        </span>
-                                      ) : (
-                                        <span className="absolute flex items-center justify-center w-8 h-8 bg-gray-200 rounded-full -start-4 ring-4 ring-white dark:ring-gray-900 dark:bg-gray-700">
-                                          <svg
-                                            className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400"
-                                            aria-hidden="true"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            fill="currentColor"
-                                            viewBox="0 0 18 20"
-                                          >
-                                            <path d="M16 1h-3.278A1.992 1.992 0 0 0 11 0H7a1.993 1.993 0 0 0-1.722 1H2a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2Zm-3 14H5a1 1 0 0 1 0-2h8a1 1 0 0 1 0 2Zm0-4H5a1 1 0 0 1 0-2h8a1 1 0 1 1 0 2Zm0-5H5a1 1 0 0 1 0-2h2V2h4v2h2a1 1 0 1 1 0 2Z" />
-                                          </svg>
-                                        </span>
-                                      )}
-                                      <h3 className="text-sm font-medium leading-tight pt-1.5 pl-2">
-                                        {activity.name}
-                                      </h3>
-                                      {activity.hold != 0 ? (
-                                        <p className="text-xs font-normal leading-tight pt-1 pl-2">
-                                          Hold Time : {activity.hold} hours
-                                        </p>
-                                      ) : null}
-                                      {cycle === true &&
-                                      currentActivity &&
-                                      currentActivity.hold_expiry != null ? (
-                                        <p className="text-xs font-normal leading-tight pt-1 pl-2">
-                                          Complete in :{" "}
-                                          {getTimeRemaining(
-                                            currentActivity.hold_expiry
-                                          )}
-                                        </p>
-                                      ) : nextAllowedActivity &&
-                                        nextAllowedActivity.name ===
-                                          lists[selected].activity_order[
-                                            lists[selected].activity_order
-                                              .length - 1
-                                          ].name ? (
-                                        <p className="text-xs font-normal leading-tight pt-1 pl-2">
-                                          Complete in :{" "}
-                                          {getTimeRemaining(
-                                            currentActivity.hold_expiry
-                                          )}
-                                        </p>
-                                      ) : null}
-                                    </li>
-                                  )
-                                )}
-                              </ol>
-                            </div>
+                            {lists[selected].eqp_name === "Steam Sterilizer" ? (
+                              <div className="px-12">
+                                <p className="pb-8 text-sm font-medium text-gray-900 dark:text-white">
+                                  Below activities to be completed every 24hrs
+                                  for {lists[selected].eqp_name}
+                                </p>
+                                <ol className="relative text-gray-500 border-s border-gray-300 dark:border-gray-700 dark:text-gray-400">
+                                  {lists[selected].activity_order.map(
+                                    (activity, index) => (
+                                      <li key={index} className="mb-10 ms-6">
+                                        {currentActivity &&
+                                        index <=
+                                          lists[
+                                            selected
+                                          ].activity_order.findIndex(
+                                            (activityq) =>
+                                              activityq.name ===
+                                              currentActivity.activity_name
+                                          ) &&
+                                        !dayCompleted ? (
+                                          <span className="absolute flex items-center justify-center w-8 h-8 bg-green-200 rounded-full -start-4 ring-4 ring-white dark:ring-gray-900 dark:bg-green-900">
+                                            <svg
+                                              className="w-3.5 h-3.5 text-green-500 dark:text-green-400"
+                                              aria-hidden="true"
+                                              xmlns="http://www.w3.org/2000/svg"
+                                              fill="none"
+                                              viewBox="0 0 16 12"
+                                            >
+                                              <path
+                                                stroke="currentColor"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth="2"
+                                                d="M1 5.917 5.724 10.5 15 1.5"
+                                              />
+                                            </svg>
+                                          </span>
+                                        ) : (
+                                          <span className="absolute flex items-center justify-center w-8 h-8 bg-gray-200 rounded-full -start-4 ring-4 ring-white dark:ring-gray-900 dark:bg-gray-700">
+                                            <svg
+                                              className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400"
+                                              aria-hidden="true"
+                                              xmlns="http://www.w3.org/2000/svg"
+                                              fill="currentColor"
+                                              viewBox="0 0 18 20"
+                                            >
+                                              <path d="M16 1h-3.278A1.992 1.992 0 0 0 11 0H7a1.993 1.993 0 0 0-1.722 1H2a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2Zm-3 14H5a1 1 0 0 1 0-2h8a1 1 0 0 1 0 2Zm0-4H5a1 1 0 0 1 0-2h8a1 1 0 1 1 0 2Zm0-5H5a1 1 0 0 1 0-2h2V2h4v2h2a1 1 0 1 1 0 2Z" />
+                                            </svg>
+                                          </span>
+                                        )}
+                                        <h3 className="text-sm font-medium leading-tight pt-1.5 pl-2">
+                                          {activity.name}
+                                        </h3>
+                                        {currentActivity &&
+                                        currentActivity.hold_expiry &&
+                                        activity.name ===
+                                          nextAllowedActivity.name ? (
+                                          <div className="text-sm font-medium leading-tight pt-1.5 pl-2">
+                                            Start in :{" "}
+                                            {getTimeRemaining(
+                                              currentActivity.hold_expiry
+                                            )}
+                                          </div>
+                                        ) : null}
+                                      </li>
+                                    )
+                                  )}
+                                </ol>
+                              </div>
+                            ) : null}
                           </div>
                         </form>
                       </div>
@@ -1240,7 +1284,7 @@ const ClientListComponent = ({ lists, user, id }) => {
           </div>
         </div>
       </Dialog>
-
+      {/* Hold Time Expired Modal */}
       <Dialog open={holdOpen} onClose={setHoldOpen} className="relative z-10">
         <DialogBackdrop
           transition
@@ -1258,13 +1302,15 @@ const ClientListComponent = ({ lists, user, id }) => {
                   <div className="mt-3 text-center sm:mt-0 sm:text-left p-3">
                     <DialogTitle
                       as="h3"
-                      className="text-base font-semibold text-gray-900 w-full dark:text-white"
+                      className="text-xl text-red-700 font-semibold  w-full dark:text-white"
                     >
                       Hold Time Expired
                     </DialogTitle>
-                    <div className="mt-6 w-full pb-6">
+                    <div className="text-md mt-6 w-full pb-6">
                       <p>
-                        Resetting all progress, pleae start from the beginning
+                        Resetting all progress, please close this popup and
+                        click on Start Activity button to restart the activities
+                        from the beginning.
                       </p>
                     </div>
                   </div>
@@ -1611,7 +1657,7 @@ const ClientListComponent = ({ lists, user, id }) => {
                             <input
                               type="text"
                               name="rejection_reason"
-                              onChange={handleInputChange}
+                              onChange={handleRejectInputChange}
                               className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                             />
                           </div>

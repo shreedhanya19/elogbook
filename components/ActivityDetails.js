@@ -25,9 +25,7 @@ export function ActivityDetails({ activity, users }) {
   };
   const [open, setOpen] = useState(false);
   const [openPauseModal, setOpenPauseModal] = useState(false);
-  const [activityStatus, setActivityStatus] = useState(
-    activity.activity_status
-  );
+  const [activityStatus, setActivityStatus] = useState(activity);
   const [formData, setFormData] = useState({
     remarks: "",
   });
@@ -35,6 +33,20 @@ export function ActivityDetails({ activity, users }) {
   const [subTasks, setSubTasks] = useState([]);
   const [insertedSubTask, setInsertedSubTask] = useState();
   const [currentSubTask, setCurrentSubTask] = useState();
+
+  const getFutureTimestamp = (hours) => {
+    // Get future timestamp in hours
+    const now = new Date();
+    const future = new Date(now.getTime() + hours * 60 * 60 * 1000);
+    const year = future.getFullYear();
+    const month = String(future.getMonth() + 1).padStart(2, "0");
+    const day = String(future.getDate()).padStart(2, "0");
+    const hoursx = String(future.getHours()).padStart(2, "0");
+    const minutes = String(future.getMinutes()).padStart(2, "0");
+    const seconds = String(future.getSeconds()).padStart(2, "0");
+
+    return `${year}-${month}-${day} ${hoursx}:${minutes}:${seconds}`;
+  };
 
   function calculateTimeElapsed(startTime) {
     const start = new Date(startTime);
@@ -109,7 +121,7 @@ export function ActivityDetails({ activity, users }) {
     async function fetchEquipmentName() {
       const { data, error } = await supabase
         .from("EqpMaster")
-        .select("eqp_name,tag_id")
+        .select("*")
         .eq("tag_id", activity.linked_eqp)
         .single();
 
@@ -135,26 +147,56 @@ export function ActivityDetails({ activity, users }) {
 
   const handleComplete = async (e) => {
     e.preventDefault();
-
-    try {
-      const { data, error } = await supabase
-        .from("production_activities")
-        .update({
-          activity_status: "Completed",
-          end_time: getCurrentTime(),
-          completed_by: users.email,
-          updated_at: getCurrentTime(),
-          updated_by: users.email,
-          remarks: formData.remarks,
-          time_elapsed: calculateTimeElapsed(activity.start_time),
-        })
-        .eq("id", activity.id);
-      console.log(data);
-      if (error) {
-        throw error;
+    if (!activity.hold_time) {
+      try {
+        const { data, error } = await supabase
+          .from("production_activities")
+          .update({
+            activity_status: "Completed",
+            end_time: getCurrentTime(),
+            completed_by: users.email,
+            updated_at: getCurrentTime(),
+            updated_by: users.email,
+            remarks: formData.remarks,
+            // hold_expiry: getFutureTimestamp(
+            //   equipmentName.activity_order[
+            //     equipmentName.activity_order.findIndex(
+            //       (activityq) => activityq.name === activityStatus.activity_name
+            //     )
+            //   ].hold
+            // ),
+            time_elapsed: calculateTimeElapsed(activity.start_time),
+          })
+          .eq("id", activity.id);
+        console.log(data);
+        if (error) {
+          throw error;
+        }
+      } catch (error) {
+        console.error("Error completing activity:", error);
       }
-    } catch (error) {
-      console.error("Error completing activity:", error);
+    } else {
+      try {
+        const { data, error } = await supabase
+          .from("production_activities")
+          .update({
+            activity_status: "Completed",
+            end_time: getCurrentTime(),
+            completed_by: users.email,
+            updated_at: getCurrentTime(),
+            updated_by: users.email,
+            remarks: formData.remarks,
+            hold_expiry: getFutureTimestamp(activity.hold_time),
+            time_elapsed: calculateTimeElapsed(activity.start_time),
+          })
+          .eq("id", activity.id);
+        console.log(data);
+        if (error) {
+          throw error;
+        }
+      } catch (error) {
+        console.error("Error completing activity:", error);
+      }
     }
     router.push("/protected/production");
   };
@@ -229,11 +271,11 @@ export function ActivityDetails({ activity, users }) {
             </h3>
             <div>
               <div className="text-xl text-gray-700 font-semibold pt-3">
-                {activityStatus === "In Progress"
+                {activityStatus.activity_status === "In Progress"
                   ? timeElapsed
                   : activity.time_elapsed}
               </div>
-              {activityStatus === "In Progress" ? (
+              {activityStatus.activity_status === "In Progress" ? (
                 <div className="flex flex-col gap-2 mt-5">
                   <button
                     onClick={() => setOpen(true)}

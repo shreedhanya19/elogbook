@@ -23,6 +23,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/protected/page.tsx", "app/protected/production/page.js", "lib/ServerUserFetcher.js"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/protected/page.tsx", "app/protected/production/page.js", "lib/ServerUserFetcher.js", "components/datePicker.js"],
   "exclude": ["node_modules"]
 }
