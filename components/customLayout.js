@@ -15,6 +15,7 @@ export default function CustomLayout({
   const [eqpDropdown, setEqpDropdown] = useState(false);
   const [areaDropdown, setAreaDropdown] = useState(false);
   const [calDropdown, setCalDropdown] = useState(false);
+  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
     setIsClient(true); // Set to true after component mounts

@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase";
 
 import { useRouter } from "next/navigation";
 
-const SteamSterilizer = ({ eqp, user }) => {
+const MixingVessel = ({ eqp, user }) => {
   const getCurrentTime = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -47,7 +47,6 @@ const SteamSterilizer = ({ eqp, user }) => {
   });
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectSubmitted, setRejectSubmitted] = useState(false);
-  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -82,47 +81,47 @@ const SteamSterilizer = ({ eqp, user }) => {
   useEffect(() => {
     setSubmitted(false);
     setRejectSubmitted(false);
-    const fetchMandatoryTasks = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("production_activities")
-          .select("*")
-          .eq("linked_eqp", eqp.tag_id)
-          .or(
-            "activity_name.eq.Cleaning,activity_name.eq.VLT,activity_name.eq.Bowie Dick"
-          )
-          .gte(
-            "end_time",
-            new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-          )
-          .order("start_time", { ascending: false })
-          .limit(3);
-        if (error) {
-          throw error;
-        }
-        console.log(data);
-        setMandatoryTasks({
-          cleaning: data.some(
-            (activity) =>
-              activity.activity_name === "Cleaning" &&
-              activity.activity_status === "Completed"
-          ),
-          vlt: data.some(
-            (activity) =>
-              activity.activity_name === "VLT" &&
-              activity.activity_status === "Completed"
-          ),
-          bowieDick: data.some(
-            (activity) =>
-              activity.activity_name === "Bowie Dick" &&
-              activity.activity_status === "Completed"
-          ),
-        });
-      } catch (error) {
-        console.log("error", error);
-      }
-    };
-    fetchMandatoryTasks();
+    // const fetchMandatoryTasks = async () => {
+    //   try {
+    //     const { data, error } = await supabase
+    //       .from("production_activities")
+    //       .select("*")
+    //       .eq("linked_eqp", eqp.tag_id)
+    //       .or(
+    //         "activity_name.eq.Cleaning,activity_name.eq.VLT,activity_name.eq.Bowie Dick"
+    //       )
+    //       .gte(
+    //         "end_time",
+    //         new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    //       )
+    //       .order("start_time", { ascending: false })
+    //       .limit(3);
+    //     if (error) {
+    //       throw error;
+    //     }
+    //     console.log(data);
+    //     setMandatoryTasks({
+    //       cleaning: data.some(
+    //         (activity) =>
+    //           activity.activity_name === "Cleaning" &&
+    //           activity.activity_status === "Completed"
+    //       ),
+    //       vlt: data.some(
+    //         (activity) =>
+    //           activity.activity_name === "VLT" &&
+    //           activity.activity_status === "Completed"
+    //       ),
+    //       bowieDick: data.some(
+    //         (activity) =>
+    //           activity.activity_name === "Bowie Dick" &&
+    //           activity.activity_status === "Completed"
+    //       ),
+    //     });
+    //   } catch (error) {
+    //     console.log("error", error);
+    //   }
+    // };
+    // fetchMandatoryTasks();
     const fetchLatestActivity = async () => {
       try {
         const { data, error } = await supabase
@@ -142,21 +141,6 @@ const SteamSterilizer = ({ eqp, user }) => {
       }
     };
     fetchLatestActivity();
-    const fetchProfile = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-        if (error) throw error;
-        setProfile(data);
-      } catch (err) {
-        console.error("Error fetching profile data:", err);
-        return null;
-      }
-    };
-    fetchProfile();
   }, []);
 
   const fetchLatestActivity = async () => {
@@ -178,9 +162,9 @@ const SteamSterilizer = ({ eqp, user }) => {
     }
   };
 
-  useEffect(() => {
-    setNextSuggestedActivity(getNextActivity(mandatoryTasks));
-  }, [mandatoryTasks]);
+  //   useEffect(() => {
+  //     setNextSuggestedActivity(getNextActivity(mandatoryTasks));
+  //   }, [mandatoryTasks]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -192,12 +176,12 @@ const SteamSterilizer = ({ eqp, user }) => {
     ) {
       console.log("error submitting");
     } else {
-      if (
-        nextSuggestedActivity != null &&
-        nextSuggestedActivity != activityName
-      ) {
-        setMismatchOpen(true);
-      } else if (activityName != "Others") {
+      //   if (
+      //     nextSuggestedActivity != null &&
+      //     nextSuggestedActivity != activityName
+      //   ) {
+      //     setMismatchOpen(true);
+      if (activityName != "Others") {
         try {
           const { data, error } = await supabase
             .from("production_activities") // Replace with your table name
@@ -308,47 +292,45 @@ const SteamSterilizer = ({ eqp, user }) => {
   return (
     <div className="flex flex-col h-full overflow-auto">
       <div className="flex-1 m-3 p-3 bg-white border border-gray-200 rounded-lg shadow sm:p-8 dark:bg-zinc-900 dark:border-zinc-700">
-        {profile && profile.roles.indexOf("Approver") > -1 && (
-          <div className="relative justify-end mb-4">
-            <button
-              id="dropdownMenuIconButton"
-              data-dropdown-toggle="dropdownDots"
-              className="absolute right-0 items-center p-2  font-medium text-center text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none dark:text-white focus:ring-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
-              type="button"
-              onClick={() => setAuditTrailOpen(true)}
+        <div className="relative justify-end mb-4">
+          <button
+            id="dropdownMenuIconButton"
+            data-dropdown-toggle="dropdownDots"
+            className="absolute right-0 items-center p-2  font-medium text-center text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none dark:text-white focus:ring-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
+            type="button"
+            onClick={() => setAuditTrailOpen(true)}
+          >
+            <svg
+              className="w-5 h-5"
+              aria-hidden="true"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="currentColor"
+              viewBox="0 0 4 15"
             >
-              <svg
-                className="w-5 h-5"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="currentColor"
-                viewBox="0 0 4 15"
-              >
-                <path d="M3.5 1.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 6.041a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.959a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" />
-              </svg>
-            </button>
+              <path d="M3.5 1.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 6.041a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.959a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" />
+            </svg>
+          </button>
 
-            <div
-              ref={menuRef}
-              id="dropdownDots"
-              className={`border ${auditTrailOpen ? "" : "hidden"} border-gray-200 shadow-md z-10 absolute right-0 top-10 bg-white divide-y divide-gray-100 rounded-lg w-44 dark:bg-gray-700 dark:divide-gray-600`}
+          <div
+            ref={menuRef}
+            id="dropdownDots"
+            className={`border ${auditTrailOpen ? "" : "hidden"} border-gray-200 shadow-md z-10 absolute right-0 top-10 bg-white divide-y divide-gray-100 rounded-lg w-44 dark:bg-gray-700 dark:divide-gray-600`}
+          >
+            <ul
+              className="py-2 text-gray-700 dark:text-gray-200"
+              aria-labelledby="dropdownMenuIconButton"
             >
-              <ul
-                className="py-2 text-gray-700 dark:text-gray-200"
-                aria-labelledby="dropdownMenuIconButton"
-              >
-                <li>
-                  <a
-                    href={`./production/equipment/${eqp.eqpid}`}
-                    className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                  >
-                    View Audit Trail
-                  </a>
-                </li>
-              </ul>
-            </div>
+              <li>
+                <a
+                  href={`./production/equipment/${eqp.eqpid}`}
+                  className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                >
+                  View Audit Trail
+                </a>
+              </li>
+            </ul>
           </div>
-        )}
+        </div>
         <h5 className="text-xl font-bold leading-none text-gray-900 dark:text-white">
           Equipment Details
         </h5>
@@ -487,36 +469,32 @@ const SteamSterilizer = ({ eqp, user }) => {
                                     onChange={(e) =>
                                       setActivityName(e.target.value)
                                     }
-                                    defaultValue={
-                                      nextSuggestedActivity != null
-                                        ? nextSuggestedActivity
-                                        : "Select a Value"
-                                    }
+                                    // defaultValue={
+                                    //   nextSuggestedActivity != null
+                                    //     ? nextSuggestedActivity
+                                    //     : "Select a Value"
+                                    // }
                                   >
                                     <option value="Select a Value">
                                       Select a value
                                     </option>
                                     <option value="Cleaning">Cleaning</option>
-                                    <option value="VLT">VLT</option>
-                                    <option value="Bowie Dick">
-                                      Bowie Dick
-                                    </option>
-                                    <option value="Garment Load">
-                                      Garment Load
-                                    </option>
-                                    <option value="Disinfectant Load">
-                                      Disinfectant Load
+                                    <option value="CIP">CIP</option>
+                                    <option value="PHT">PHT</option>
+                                    <option value="SIP">SIP</option>
+                                    <option value="Load Cell Calibration">
+                                      Load Cell Calibration
                                     </option>
                                     <option value="Others">Others</option>
                                   </select>
                                 </div>
-                                {nextSuggestedActivity != null &&
+                                {/* {nextSuggestedActivity != null &&
                                 activityName != nextSuggestedActivity ? (
                                   <span className="text-red-900 font-semibold">
                                     Next Recommended Activity :{" "}
                                     {nextSuggestedActivity}
                                   </span>
-                                ) : null}
+                                ) : null} */}
                                 {activityName && activityName === "Others" ? (
                                   <div>
                                     <label className="block mb-2  font-medium text-gray-900 dark:text-white">
@@ -570,6 +548,7 @@ const SteamSterilizer = ({ eqp, user }) => {
                                   />
                                 </div>
                               </div>
+                              {/* Right side timeline
                               <div className="px-12">
                                 <p className="pb-8  font-medium text-gray-900 dark:text-white">
                                   Below activities to be completed every 24hrs
@@ -685,7 +664,7 @@ const SteamSterilizer = ({ eqp, user }) => {
                                     </h3>
                                   </li>
                                 </ol>
-                              </div>
+                              </div> */}
                               {/* {lists[selected].eqp_name === "Steam Sterilizer" ? (
                         <div className="px-12">
                           <p className="pb-8  font-medium text-gray-900 dark:text-white">
@@ -782,7 +761,7 @@ const SteamSterilizer = ({ eqp, user }) => {
             </div>
           </div>
           {/*Mismatch modal*/}
-          {missmatchOpen && (
+          {/* {missmatchOpen && (
             <div
               className={`relative z-20 `}
               aria-labelledby="modal-title"
@@ -859,7 +838,7 @@ const SteamSterilizer = ({ eqp, user }) => {
                 </div>
               </div>
             </div>
-          )}
+          )} */}
         </div>
 
         <div className="relative overflow-x-auto">
@@ -896,14 +875,12 @@ const SteamSterilizer = ({ eqp, user }) => {
                         <div className="text-sm font-semibold dark:text-white rounded-full bg-orange-200 text-orange-900 w-fit px-4 py-1 ml-5 h-fit">
                           Approval Pending
                         </div>
-                        {profile && profile.roles.indexOf("Approver") > -1 && (
-                          <button
-                            onClick={() => setApproveOpen(true)}
-                            className="ml-auto mr-5 mt-3 bg-blue-200 text-blue-900 px-4 py-3 font-semibold rounded-lg z-99"
-                          >
-                            Approve Activity
-                          </button>
-                        )}
+                        <button
+                          onClick={() => setApproveOpen(true)}
+                          className="ml-auto mr-5 mt-3 bg-blue-200 text-blue-900 px-4 py-3 font-semibold rounded-lg z-99"
+                        >
+                          Approve Activity
+                        </button>
                       </div>
                     )}
                   </figure>
@@ -1588,4 +1565,4 @@ const SteamSterilizer = ({ eqp, user }) => {
   );
 };
 
-export default SteamSterilizer;
+export default MixingVessel;
